@@ -1,34 +1,38 @@
-
 # destino da pasta para os arquivos (escolha)
 
 "Z:/POWER BI/" |> setwd()
 
-# gerando pasta (escolha)
+# gerando pasta
 nome_pasta <- "COMEXSTAT"
 
 dir.create(paste0(getwd(),"/", nome_pasta))
 setwd(paste0(getwd(),"/", nome_pasta))
 
-# dir.create("data")                                                                                                        
+# gerando pasta 
+nome_pasta_ncm <- "COMEXSTAT_NCM"
+
+dir.create(paste0(getwd(),"/", nome_pasta_ncm))
+setwd(paste0(getwd(),"/", nome_pasta_ncm))
+
 
 # criando loop para download de arquivo
 
-anos <- 2023:2023
+anos <- 2019:2023
 EXP <- vector(mode = 'list', length = length(anos))
 IMP <- vector(mode = 'list', length = length(anos))
 
 for(i in seq_along(anos)){
- 
+  
   link_file_exp <-
     paste0("https://balanca.economia.gov.br/balanca/bd/comexstat-bd/ncm/EXP_",
            anos[i], ".csv")
- 
+  
   EXP[[i]] <- readr::read_csv2(link_file_exp)
- 
+  
   link_file_imp <-
     paste0("https://balanca.economia.gov.br/balanca/bd/comexstat-bd/ncm/IMP_",
            anos[i], ".csv")
- 
+  
   IMP[[i]] <- readr::read_csv2(link_file_imp)
 }
 
@@ -44,20 +48,20 @@ IMP <-
   IMP |> dplyr::bind_rows() |>
   dplyr::mutate(tipo_transacao = "Importação")
 
-comercio_exterior <- EXP |> dplyr::bind_rows(IMP)
+comercio_exterior_ncm <- EXP |> dplyr::bind_rows(IMP)
 
 # transform column date
 
-comercio_exterior <-
-  comercio_exterior |>
-  tidyr::unite(competencia, "CO_MES", "CO_ANO", sep = "-") |>
+comercio_exterior_ncm <- 
+  comercio_exterior_ncm |> 
+  tidyr::unite(competencia, "CO_MES", "CO_ANO", sep = "-") |> 
   dplyr::mutate(competencia = stringr::str_c("01-", competencia)) |>
   dplyr::mutate(competencia = lubridate::dmy(competencia))
 
-comercio_exterior |> dplyr::glimpse()
+comercio_exterior_ncm |> dplyr::glimpse()
 
 
-# downloading and applying decoder
+# downloading and applying decoder 
 
 link_decodificador <-
   "https://balanca.economia.gov.br/balanca/bd/tabelas/TABELAS_AUXILIARES.xlsx"
@@ -89,26 +93,27 @@ for(l in seq_along(lista_tradutor)){
 # tirando os nomes comuns necessarios para decodificar
 
 nomes_atraduzir <- vector(mode = 'list',
-                         length = length(lista_tradutor))
+                          length = length(lista_tradutor)) 
 
 for(l in seq_along(nomes_atraduzir)){
   nomes_atraduzir[[l]] <-
-  dplyr::intersect(names(comercio_exterior), names(lista_tradutor[[l]]))
+    dplyr::intersect(names(comercio_exterior_ncm), names(lista_tradutor[[l]]))
 }
 
 nomes_atraduzir <- nomes_atraduzir |> paste()
-
-#####
 
 # Decoding data part by part to be able to safe in a list
 
 compilado_traduzido <- vector(mode = 'list',
                               length = length(nomes_atraduzir))
 
+
 for(l in seq_along(lista_tradutor)){
-  compilado_traduzido[[l]] <-
-    novocaged[nomes_atraduzir[l]] |>
-    dplyr::left_join(lista_tradutor_renomeada[[l]])
+  tryCatch({
+    compilado_traduzido[[l]] <-
+      comercio_exterior_ncm[nomes_atraduzir[l]] |>
+      dplyr::left_join(lista_tradutor[[l]])},
+    error = function(err) { warning("file could not be join") })
 }
 
 # Join all decode into list and isolating only the decode part
@@ -118,12 +123,14 @@ compilado_traduzido <- vector(mode = 'list',
 
 for(l in seq_along(lista_tradutor)){
   compilado_traduzido[[l]] <-
-    comercio_exterior[nomes_atraduzir[l]] |>
+    comercio_exterior_ncm[nomes_atraduzir[l]] |>
     dplyr::left_join(lista_tradutor[[l]], multiple = "first") |>
     dplyr::select(!contains(c("CO_NCM", "CO_PAIS", "CO_MUN_GEO", "CO_VIA",
                               "CO_URF")))
 }
 
+
+compilado_traduzido
 # Unifying and selecting every decoded data into one file
 
 compilado_traduzido <-
@@ -133,15 +140,32 @@ compilado_traduzido |> dplyr::glimpse()
 
 # Unifying with decode part
 
-comercio_exterior <- comercio_exterior |> dplyr::bind_cols(compilado_traduzido)
+comercio_exterior_ncm <- comercio_exterior_ncm |> dplyr::bind_cols(compilado_traduzido)
 
-comercio_exterior |> dplyr::glimpse()
+comercio_exterior_ncm |> dplyr::glimpse()
+
+# selecting variables
+
+nomes_semremocao <- comercio_exterior_ncm |> names()
+
+nomes_semremocao
+
+nomes_comremocao <- c("competencia", "CO_NCM", "CO_UNID", "CO_PAIS", "SG_UF_NCM",
+                      "CO_VIA", "CO_URF", "QT_ESTAT", "KG_LIQUIDO", "VL_FOB",
+                      "tipo_transacao", "NO_NCM_POR...14", "NO_SEC_POR", "NO_CUCI_SEC",
+                      "NO_CGCE_N2", "NO_ISIC_GRUPO", "NO_ISIC_SECAO", "NO_UNID",
+                      "SG_UNID", "NO_PAIS", "NO_BLOCO")
+
+
+
+comercio_exterior_ncm <- comercio_exterior_ncm |> dplyr::select(nomes_comremocao)
+
 
 # Writing file
 
-nome_arquivo_csv <- "comercio_exterior"
+nome_arquivo_csv <- "comercio_exterior_ncm"
 
 caminho_arquivo <- paste0(getwd(),"/",nome_arquivo_csv, ".txt")
 
-readr::write_csv2(comercio_exterior,
+readr::write_csv2(comercio_exterior_ncm,
                   caminho_arquivo)
