@@ -112,37 +112,21 @@ for(l in seq_along(lista_tradutor)){
   tryCatch({
     compilado_traduzido[[l]] <-
       comercio_exterior_ncm[nomes_atraduzir[l]] |>
-      dplyr::left_join(lista_tradutor[[l]])},
+      dplyr::left_join(lista_tradutor[[l]], multiple = "first") |>
+      dplyr::select(!contains(c("CO_NCM", "CO_PAIS", "CO_MUN_GEO", "CO_VIA",
+                                "CO_URF")))},
     error = function(err) { warning("file could not be join") })
 }
 
-# Join all decode into list and isolating only the decode part
-
-compilado_traduzido <- vector(mode = 'list',
-                              length = length(lista_tradutor))
-
-for(l in seq_along(lista_tradutor)){
-  compilado_traduzido[[l]] <-
-    comercio_exterior_ncm[nomes_atraduzir[l]] |>
-    dplyr::left_join(lista_tradutor[[l]], multiple = "first") |>
-    dplyr::select(!contains(c("CO_NCM", "CO_PAIS", "CO_MUN_GEO", "CO_VIA",
-                              "CO_URF")))
-}
-
-
-compilado_traduzido
 # Unifying and selecting every decoded data into one file
 
 compilado_traduzido <-
   compilado_traduzido |> purrr::list_cbind()
 
-compilado_traduzido |> dplyr::glimpse()
-
 # Unifying with decode part
 
-comercio_exterior_ncm <- comercio_exterior_ncm |> dplyr::bind_cols(compilado_traduzido)
-
-comercio_exterior_ncm |> dplyr::glimpse()
+comercio_exterior_ncm <- comercio_exterior_ncm |>
+  dplyr::bind_cols(compilado_traduzido)
 
 # selecting variables
 
@@ -150,16 +134,17 @@ nomes_semremocao <- comercio_exterior_ncm |> names()
 
 nomes_semremocao
 
-nomes_comremocao <- c("competencia", "CO_NCM", "CO_UNID", "CO_PAIS", "SG_UF_NCM",
-                      "CO_VIA", "CO_URF", "QT_ESTAT", "KG_LIQUIDO", "VL_FOB",
-                      "tipo_transacao", "NO_NCM_POR...14", "NO_SEC_POR", "NO_CUCI_SEC",
-                      "NO_CGCE_N2", "NO_ISIC_GRUPO", "NO_ISIC_SECAO", "NO_UNID",
-                      "SG_UNID", "NO_PAIS", "NO_BLOCO")
+nomes_comremocao <- c("competencia", "CO_NCM", "CO_UNID", "CO_PAIS",
+                      "SG_UF_NCM", "CO_VIA", "CO_URF", "QT_ESTAT", "KG_LIQUIDO",
+                      "VL_FOB", "tipo_transacao", "NO_NCM_POR...14",
+                      "NO_SEC_POR", "NO_CUCI_SEC","NO_CGCE_N2", "NO_ISIC_GRUPO",
+                      "NO_ISIC_SECAO", "NO_UNID","SG_UNID", "NO_PAIS",
+                      "NO_BLOCO")
 
 
 
-comercio_exterior_ncm <- comercio_exterior_ncm |> dplyr::select(nomes_comremocao)
-
+comercio_exterior_ncm <- comercio_exterior_ncm |>
+  dplyr::select(nomes_comremocao)
 
 # Writing file
 
