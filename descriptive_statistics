@@ -1,21 +1,6 @@
-# destino da pasta para os arquivos (escolha)
-
-"Z:/POWER BI/" |> setwd()
-
-# gerando pasta
-nome_pasta <- "COMEXSTAT"
-
-dir.create(paste0(getwd(),"/", nome_pasta))
-setwd(paste0(getwd(),"/", nome_pasta))
-
-# gerando pasta 
-nome_pasta_ncm <- "COMEXSTAT_NCM"
-
-dir.create(paste0(getwd(),"/", nome_pasta_ncm))
-setwd(paste0(getwd(),"/", nome_pasta_ncm))
-
-
-# criando loop para download de arquivo
+# comexstat_ncm
+# creating loop for download files
+setwd("Z:/rstudio/comexstat/comexstat_ncm")
 
 anos <- 2019:2023
 EXP <- vector(mode = 'list', length = length(anos))
@@ -36,7 +21,7 @@ for(i in seq_along(anos)){
   IMP[[i]] <- readr::read_csv2(link_file_imp)
 }
 
-# tomando medidas para unificar todos os dados
+# unifying all data
 
 EXP <-
   EXP |> dplyr::bind_rows() |>
@@ -58,9 +43,6 @@ comercio_exterior_ncm <-
   dplyr::mutate(competencia = stringr::str_c("01-", competencia)) |>
   dplyr::mutate(competencia = lubridate::dmy(competencia))
 
-comercio_exterior_ncm |> dplyr::glimpse()
-
-
 # downloading and applying decoder 
 
 link_decodificador <-
@@ -77,8 +59,6 @@ lista_tradutor <- vector(mode = 'list',
                          length = length(nomes_atraduzir)-1)
 
 
-###
-
 for(l in seq_along(lista_tradutor)){
   lista_tradutor[[l]] <-
     readxl::read_excel("decodificador_comexstat.xlsx", as.character(l)) |> #dplyr::glimpse()
@@ -90,7 +70,7 @@ for(l in seq_along(lista_tradutor)){
     )
 }
 
-# tirando os nomes comuns necessarios para decodificar
+# finding common names to decode
 
 nomes_atraduzir <- vector(mode = 'list',
                           length = length(lista_tradutor)) 
@@ -132,16 +112,12 @@ comercio_exterior_ncm <- comercio_exterior_ncm |>
 
 nomes_semremocao <- comercio_exterior_ncm |> names()
 
-nomes_semremocao
-
 nomes_comremocao <- c("competencia", "CO_NCM", "CO_UNID", "CO_PAIS",
                       "SG_UF_NCM", "CO_VIA", "CO_URF", "QT_ESTAT", "KG_LIQUIDO",
                       "VL_FOB", "tipo_transacao", "NO_NCM_POR...14",
                       "NO_SEC_POR", "NO_CUCI_SEC","NO_CGCE_N2", "NO_ISIC_GRUPO",
-                      "NO_ISIC_SECAO", "NO_UNID","SG_UNID", "NO_PAIS",
+                      "NO_UNID","SG_UNID", "NO_PAIS",
                       "NO_BLOCO")
-
-
 
 comercio_exterior_ncm <- comercio_exterior_ncm |>
   dplyr::select(nomes_comremocao)
