@@ -2,7 +2,8 @@
 # creating loop for download files
 setwd("Z:/rstudio/comexstat/comexstat_ncm")
 
-anos <- 2019:2023
+anos <- as.integer(lubridate::year(lubridate::today())-4):
+  as.integer(lubridate::year(lubridate::today()))
 EXP <- vector(mode = 'list', length = length(anos))
 IMP <- vector(mode = 'list', length = length(anos))
 
